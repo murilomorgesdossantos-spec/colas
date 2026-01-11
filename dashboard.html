@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel - Resolve Automação</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <div class="container dashboard-container">
+        <header class="dash-header">
+            <div class="user-info">
+                <div class="avatar">IF</div>
+                <div>
+                    <h3>Portal de Visualização</h3>
+                    <small>Selecione uma disciplina</small>
+                </div>
+            </div>
+            
+            <div style="display:flex; gap:10px;">
+                <button id="btnAdminUpload" onclick="openAdminModal()" class="btn-icon" title="Upload Admin" style="display:none;">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </button>
+                <button onclick="logout()" class="btn-icon danger" title="Sair">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="period-selector">
+            <button class="period-btn active" onclick="loadPeriod('1')">1º Ano</button>
+            <button class="period-btn" onclick="loadPeriod('2')">2º Ano</button>
+            <button class="period-btn" onclick="loadPeriod('3')">3º Ano</button>
+            <button class="period-btn" onclick="loadPeriod('4')">4º Ano</button>
+
+            <button id="btnBuyBundle" class="btn-bundle" onclick="startBundlePurchase()">
+                <i class="fas fa-crown"></i> 
+                <span id="btnBundleText">Liberar Acesso Completo</span>
+            </button>
+        </div>
+
+        <div id="subjectsGrid" class="subjects-grid"></div>
+    </div>
+
+    <div id="filesModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 600px; text-align: left; max-height: 80vh; display: flex; flex-direction: column;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h3 id="filesModalTitle">Matéria</h3>
+                <button onclick="closeFilesModal()" class="btn-icon" style="border:none;">&times;</button>
+            </div>
+            <div id="filesListContainer" style="max-height: 400px; overflow-y: auto; flex-grow: 1;">
+                <p style="text-align:center; color:var(--text-muted);">Carregando...</p>
+            </div>
+            <div class="modal-actions" style="margin-top:10px;">
+                <button class="btn btn-secondary" onclick="closeFilesModal()" style="width:auto;">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="buyModal" class="modal-overlay">
+        <div class="modal-content" style="text-align: center;">
+            <div id="step-confirm">
+                <div style="font-size: 2.5rem; margin-bottom: 1rem;">🔒</div>
+                <h3>Acesso Restrito</h3>
+                <p>Esta disciplina requer desbloqueio.<br>Valor: <strong>R$ 1,00</strong></p>
+                <div class="modal-actions" style="justify-content: center;">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                    <button class="btn btn-primary" onclick="startPurchase()">Desbloquear</button>
+                </div>
+            </div>
+
+            <div id="step-pix" style="display: none;">
+                <h3>Pagamento via PIX</h3>
+                <div style="background: white; padding: 10px; display: inline-block; border-radius: 8px; margin: 15px 0;">
+                    <img id="pix-image" src="" style="width: 180px; height: 180px; display: block;">
+                </div>
+                <input type="text" id="pix-copypaste" readonly style="margin-bottom: 10px; font-size: 0.8rem; color: var(--text-muted); background: var(--bg-page); border: 1px solid var(--border-color); width: 100%; padding: 8px;">
+                <button class="btn btn-primary" onclick="copyPix()">Copiar Código</button>
+                <button class="btn btn-secondary" onclick="closeModal()" style="margin-top: 10px;">Fechar</button>
+            </div>
+
+            <div id="step-loading" style="display: none;">
+                <p>Gerando PIX...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="adminModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Upload de Material</h3>
+            <form id="uploadForm">
+                <div class="form-group">
+                    <label>Ano</label>
+                    <select id="uploadPeriod" onchange="updateUploadSubjects()">
+                        <option value="1">1º Ano</option>
+                        <option value="2">2º Ano</option>
+                        <option value="3">3º Ano</option>
+                        <option value="4">4º Ano</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Disciplina</label>
+                    <select id="uploadSubject"></select>
+                </div>
+                <div class="form-group">
+                    <label>Descrição</label>
+                    <input type="text" id="uploadDesc" placeholder="Ex: Slides Aula 01" required>
+                </div>
+                <div class="form-group">
+                    <label>Arquivo</label>
+                    <input type="file" id="fileInput" multiple accept=".pdf, .jpg, .jpeg, .png">
+                    <p id="fileStatus" style="margin-top: 5px; font-size: 0.8rem; color: var(--text-muted);">Formatos: PDF ou Imagens</p>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeAdminModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Enviar Upload</button>
+                </div>
+            </form>
+            <div id="uploadLoading" style="display:none; text-align:center; margin-top:20px;">
+                <p>Enviando... 🚀</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/script.js"></script>
+    <script>function logout() { localStorage.clear(); window.location.href = 'index.html'; }</script>
+</body>
+</html>
