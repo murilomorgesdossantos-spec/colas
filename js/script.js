@@ -1,4 +1,5 @@
 // --- CONFIGURAÇÃO GLOBAL ---
+// SUA URL (Mantenha a atualizada):
 const API_URL = 'https://script.google.com/macros/s/AKfycbzasoaug_hPyhixg6QheptfkbBCg_HxF07ChjJ9xp_znA0MRfLeEeNWTbTxbZcos93p/exec';
 
 // --- SISTEMA DE NOTIFICAÇÕES (TOAST) ---
@@ -20,7 +21,6 @@ function showToast(message, type = 'info') {
     toast.innerHTML = `${icon} <span>${message}</span>`;
     container.appendChild(toast);
 
-    // Remove após 4 segundos
     setTimeout(() => {
         toast.remove();
         if (container.children.length === 0) container.remove();
@@ -124,9 +124,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- DASHBOARD ---
+    // --- DASHBOARD (COM CONTAGEM DE ARQUIVOS) ---
     const subjectsGrid = document.getElementById('subjectsGrid');
     const btnBuyBundle = document.getElementById('btnBuyBundle');
+
+    // Variável global para armazenar as contagens
+    window.fileCounts = {};
 
     if (subjectsGrid) {
         window.refreshGrid = function() {
@@ -137,9 +140,26 @@ document.addEventListener('DOMContentLoaded', () => {
             loadPeriod(currentPeriod, allowedSubjects);
         }
 
-        fetch('subjects.json').then(res => res.json()).then(data => {
-            window.allSubjectsData = data;
+        // CARREGA MATÉRIAS E AS CONTAGENS DO GOOGLE
+        Promise.all([
+            fetch('subjects.json').then(res => res.json()),
+            postData({ action: 'get_counts' }) // Pede a contagem ao Apps Script
+        ]).then(([subjectsData, countsResponse]) => {
+            window.allSubjectsData = subjectsData;
+            
+            // Salva as contagens se a resposta for sucesso
+            if (countsResponse && countsResponse.status === 'success') {
+                window.fileCounts = countsResponse.counts;
+            }
+            
             refreshGrid();
+        }).catch(err => {
+            console.error("Erro ao carregar dados:", err);
+            // Se der erro na contagem, carrega pelo menos as matérias
+            fetch('subjects.json').then(res => res.json()).then(data => {
+                window.allSubjectsData = data;
+                refreshGrid();
+            });
         });
 
         window.loadPeriod = function(period, permissionsOverride = null) {
@@ -163,15 +183,28 @@ document.addEventListener('DOMContentLoaded', () => {
             if (materias) {
                 materias.forEach((materia, index) => {
                     const isUnlocked = allowedSubjects.includes(materia);
+                    
+                    // Pega a contagem daquela matéria (ou 0 se não tiver)
+                    const count = window.fileCounts[materia] || 0;
+                    
+                    // Cria o HTML do contador (badge)
+                    const countBadge = `
+                        <div style="margin-top: 10px; font-size: 0.8rem; color: #aaa; background: rgba(255, 255, 255, 0.05); padding: 4px 8px; border-radius: 12px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid rgba(255,255,255,0.1);">
+                            <i class="fas fa-file-alt"></i> ${count} arquivos
+                        </div>
+                    `;
+
                     const card = document.createElement('div');
                     
                     if (isUnlocked) {
                         card.className = 'subject-card fade-in';
-                        card.innerHTML = `<h4>${materia}</h4>`;
+                        // Adiciona o badge ao HTML do card
+                        card.innerHTML = `<h4>${materia}</h4> ${countBadge}`;
                         card.onclick = () => openFilesModal(materia, period); 
                     } else {
                         card.className = 'subject-card locked fade-in';
-                        card.innerHTML = `<div class="lock-icon"><i class="fas fa-lock"></i></div><h4>${materia}</h4>`;
+                        // Adiciona o badge ao HTML do card
+                        card.innerHTML = `<div class="lock-icon"><i class="fas fa-lock"></i></div><h4>${materia}</h4> ${countBadge}`;
                         card.onclick = () => openModal(materia); 
                     }
                     subjectsGrid.appendChild(card);
@@ -219,6 +252,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast("Upload realizado com sucesso!", 'success');
                     closeAdminModal();
                     uploadForm.reset();
+                    // Opcional: Recarregar a grid para atualizar a contagem imediatamente
+                    if(window.refreshGrid) {
+                        // Pequeno delay para dar tempo do Google atualizar a planilha
+                        setTimeout(() => window.location.reload(), 2000); 
+                    }
                 } else { showToast("Erro: " + result.message, 'error'); }
             } catch (err) { showToast("Erro: " + err.message, 'error'); }
             finally {
@@ -279,7 +317,7 @@ function openModal(materia) {
                 <p style="margin-bottom:0; color:#e4e4e7; display:flex; align-items:center; gap:8px;"><i class="fas fa-file-pdf" style="color:#60a5fa"></i><strong>Acesso as PROVAS da matéria</strong></p>
             </div>
             <div style="font-size: 1.1rem; color: #fff;">
-                <strong style="font-size: 1.4rem; color: #32A041;">R$ 11,90</strong>
+                Valor Simbólico: <strong style="font-size: 1.4rem; color: #32A041;">R$ 11,90</strong>
             </div>
         `;
     }

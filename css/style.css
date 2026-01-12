@@ -158,3 +158,22 @@ input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px 
     #toast-container { top: auto; bottom: 20px; right: 20px; left: 20px; } /* Toast em baixo no mobile */
     .toast { min-width: auto; width: 100%; }
 }
+
+/* ... (Seu CSS anterior) ... */
+
+/* Estilo para a contagem de arquivos */
+.file-count {
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 8px;
+    border-radius: 12px;
+    display: inline-block;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.subject-card:hover .file-count {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
+}
